@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mapa Perícias</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg: #f5f6fa;
+            --surface: #ffffff;
+            --surface-hover: #eef1f6;
+            --text: #2c3e50;
+            --text-muted: #7f8c9b;
+            --accent: #1a73e8;
+            --roxo: #9c27b0;
+            --vermelho: #e53935;
+            --laranja: #fb8c00;
+            --amarelo: #f9a825;
+            --verde: #43a047;
+            --border: rgba(0,0,0,0.1);
+            --shadow: 0 4px 24px rgba(0,0,0,0.1);
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* === MAP === */
+        #map {
+            width: 100%;
+            height: 100vh;
+        }
+
+        /* === HEADER BAR === */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            height: 52px;
+        }
+
+        .header h1 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--accent);
+            white-space: nowrap;
+        }
+
+        .header .stats {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-left: auto;
+            white-space: nowrap;
+        }
+
+        .btn-icon {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: background 0.2s;
+        }
+
+        .btn-icon:hover { background: var(--surface-hover); }
+        .btn-icon.active { background: var(--accent); color: #fff; }
+
+        /* === SIDEBAR === */
+        .sidebar {
+            position: fixed;
+            top: 52px;
+            left: 0;
+            bottom: 0;
+            width: 340px;
+            background: rgba(255, 255, 255, 0.97);
+            backdrop-filter: blur(12px);
+            border-right: 1px solid var(--border);
+            box-shadow: 2px 0 12px rgba(0,0,0,0.06);
+            z-index: 90;
+            display: flex;
+            flex-direction: column;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar.open { transform: translateX(0); }
+
+        .sidebar-search {
+            padding: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sidebar-search input {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .sidebar-search input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.15);
+        }
+
+        .sidebar-search input::placeholder { color: var(--text-muted); }
+
+        .sidebar-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 4px 0;
+        }
+
+        .sidebar-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .sidebar-item:hover { background: var(--surface-hover); }
+
+        .sidebar-item .item-name {
+            font-weight: 600;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .sidebar-item .item-reclamado {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 2px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .sidebar-item .item-dates {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 4px;
+            display: flex;
+            gap: 12px;
+        }
+
+        .color-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            flex-shrink: 0;
+        }
+
+        .color-dot.square { border-radius: 2px; }
+
+        /* === LEGEND === */
+        .legend {
+            position: fixed;
+            bottom: 24px;
+            right: 12px;
+            z-index: 80;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 11px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        }
+
+        .legend-title {
+            font-weight: 600;
+            font-size: 12px;
+            margin-bottom: 6px;
+            color: var(--accent);
+        }
+
+        .legend-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 2px 0;
+        }
+
+        .legend-color {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .legend-color.square { border-radius: 3px; }
+
+        /* === INFO WINDOW (Google Maps) === */
+        .info-window {
+            font-family: 'DM Sans', sans-serif;
+            max-width: 300px;
+            color: #1a1a2e;
+        }
+
+        .info-window h3 {
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            color: #1a1a2e;
+        }
+
+        .info-window .iw-reclamado {
+            font-size: 12px;
+            color: #555;
+            margin-bottom: 8px;
+        }
+
+        .info-window table {
+            font-size: 12px;
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .info-window table td {
+            padding: 3px 0;
+            vertical-align: top;
+        }
+
+        .info-window table td:first-child {
+            font-weight: 600;
+            color: #333;
+            width: 110px;
+        }
+
+        .info-window .iw-actions {
+            margin-top: 10px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .info-window .iw-btn {
+            background: #1a73e8;
+            color: #fff;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .info-window .iw-btn.secondary {
+            background: #e8e8e8;
+        }
+
+        /* === ROUTE PANEL === */
+        .route-panel {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 95;
+            background: rgba(255, 255, 255, 0.97);
+            backdrop-filter: blur(12px);
+            border-top: 1px solid var(--border);
+            padding: 16px;
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+        }
+
+        .route-panel.open { transform: translateY(0); }
+
+        .route-info {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .route-info .route-dest {
+            flex: 1;
+        }
+
+        .route-info .route-dest h4 {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .route-info .route-dest p {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .route-info .route-stats {
+            text-align: right;
+        }
+
+        .route-info .route-stats .distance {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .route-info .route-stats .duration {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .route-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .route-actions button, .route-actions a {
+            flex: 1;
+            padding: 10px;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            border: none;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .btn-secondary {
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border) !important;
+        }
+
+        .btn-cancel {
+            background: var(--vermelho);
+            color: white;
+        }
+
+        /* === LOADING === */
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 200;
+            background: var(--bg);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            transition: opacity 0.4s;
+        }
+
+        .loading-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .loading-text {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        /* === MOBILE === */
+        @media (max-width: 640px) {
+            .sidebar {
+                width: 100%;
+            }
+
+            .legend {
+                bottom: 16px;
+                right: 8px;
+                left: 8px;
+                font-size: 10px;
+            }
+
+            .legend-row {
+                display: inline-flex;
+                margin-right: 8px;
+            }
+        }
+
+        /* === TOAST === */
+        .toast {
+            position: fixed;
+            top: 64px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-20px);
+            z-index: 300;
+            background: var(--text);
+            border: none;
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 13px;
+            opacity: 0;
+            transition: all 0.3s;
+            pointer-events: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+    </style>
+</head>
+<body>
+
+<!-- Loading -->
+<div class="loading-overlay" id="loading">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Carregando mapa de perícias...</div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Header -->
+<div class="header">
+    <button class="btn-icon" id="btnSidebar" title="Lista de perícias">☰</button>
+    <h1>Mapa Perícias</h1>
+    <span class="stats" id="stats"></span>
+    <button class="btn-icon" id="btnRefresh" title="Recarregar dados">↻</button>
+</div>
+
+<!-- Sidebar -->
+<div class="sidebar" id="sidebar">
+    <div class="sidebar-search">
+        <input type="text" id="searchInput" placeholder="Buscar por vara, reclamado, número...">
+    </div>
+    <div class="sidebar-list" id="sidebarList"></div>
+</div>
+
+<!-- Legend -->
+<div class="legend" id="legend">
+    <div class="legend-title">Prazo de entrega</div>
+    <div class="legend-row"><div class="legend-color" style="background:var(--roxo)"></div> ≤ 20 dias (urgente)</div>
+    <div class="legend-row"><div class="legend-color square" style="background:var(--vermelho)"></div> 21–30 dias</div>
+    <div class="legend-row"><div class="legend-color square" style="background:var(--laranja)"></div> 31–40 dias</div>
+    <div class="legend-row"><div class="legend-color square" style="background:var(--amarelo)"></div> 41–60 dias</div>
+    <div class="legend-row"><div class="legend-color square" style="background:var(--verde)"></div> > 60 dias</div>
+</div>
+
+<!-- Route Panel -->
+<div class="route-panel" id="routePanel">
+    <div class="route-info">
+        <div class="route-dest">
+            <h4 id="routeDest">—</h4>
+            <p id="routeAddr">—</p>
+        </div>
+        <div class="route-stats">
+            <div class="distance" id="routeDistance">—</div>
+            <div class="duration" id="routeDuration">—</div>
+        </div>
+    </div>
+    <div class="route-actions">
+        <a id="routeGoogleMaps" class="btn-primary" href="#" target="_blank">Abrir no Google Maps</a>
+        <button class="btn-cancel" id="btnCloseRoute">Fechar</button>
+    </div>
+</div>
+
+<!-- Map -->
+<div id="map"></div>
+
+<script>
+// ============================================================
+// CONFIGURATION
+// ============================================================
+const CONFIG = {
+    API_KEY: 'AIzaSyCR95whcp4vVv9kEd7DXbMBm7MzsCVOK10',
+    SPREADSHEET_ID: '168zDX31UFti0KnYlOhtAnCoU8DiRFp_jqiE32EJxWNo',
+    SHEET_NAME: 'Sheet1',
+    DEFAULT_CENTER: { lat: -23.55, lng: -46.63 }, // São Paulo
+    DEFAULT_ZOOM: 11,
+};
+
+// Color/symbol classification
+const URGENCY = [
+    { maxDays: 20,  color: '#9c27b0', label: '≤20d',  shape: 'teardrop' },
+    { maxDays: 30,  color: '#e53935', label: '21-30d', shape: 'square' },
+    { maxDays: 40,  color: '#fb8c00', label: '31-40d', shape: 'square' },
+    { maxDays: 60,  color: '#fdd835', label: '41-60d', shape: 'square' },
+    { maxDays: 99999, color: '#43a047', label: '>60d', shape: 'square' },
+];
+
+// ============================================================
+// GLOBALS
+// ============================================================
+let map, markers = [], allData = [], infoWindow;
+let directionsService, directionsRenderer;
+
+// ============================================================
+// INIT
+// ============================================================
+function initMap() {
+    map = new google.maps.Map(document.getElementById('map'), {
+        center: CONFIG.DEFAULT_CENTER,
+        zoom: CONFIG.DEFAULT_ZOOM,
+        styles: getMapStyle(),
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
+        zoomControlOptions: {
+            position: google.maps.ControlPosition.RIGHT_CENTER
+        }
+    });
+
+    infoWindow = new google.maps.InfoWindow();
+    directionsService = new google.maps.DirectionsService();
+    directionsRenderer = new google.maps.DirectionsRenderer({
+        map: map,
+        suppressMarkers: true,
+        polylineOptions: {
+            strokeColor: '#1a73e8',
+            strokeWeight: 5,
+            strokeOpacity: 0.8
+        }
+    });
+
+    // Pad top for header
+    map.setOptions({ padding: { top: 60 } });
+
+    loadData();
+    setupEventListeners();
+}
+
+// ============================================================
+// LOAD DATA FROM GOOGLE SHEETS
+// ============================================================
+async function loadData() {
+    try {
+        const url = `https://docs.google.com/spreadsheets/d/${CONFIG.SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=${CONFIG.SHEET_NAME}`;
+        const response = await fetch(url);
+        const csv = await response.text();
+        allData = parseCSV(csv);
+        renderMarkers();
+        renderSidebar();
+        document.getElementById('stats').textContent = `${allData.length} perícia${allData.length !== 1 ? 's' : ''}`;
+        showToast(`${allData.length} perícia(s) carregada(s)`);
+    } catch (err) {
+        console.error('Erro ao carregar dados:', err);
+        showToast('Erro ao carregar dados da planilha');
+    } finally {
+        document.getElementById('loading').classList.add('hidden');
+    }
+}
+
+function parseCSV(csv) {
+    const lines = csv.split('\n');
+    if (lines.length < 2) return [];
+
+    const data = [];
+    for (let i = 1; i < lines.length; i++) {
+        const values = parseCSVLine(lines[i]);
+        if (!values || values.length < 4) continue;
+
+        const [nome, reclamado, endereco, lat, lng, dataCarga, dataAudiencia, dataEntrega, funciona07, numCompleto, linkMaps] = values;
+
+        if (!lat || !lng || !nome) continue;
+
+        const latNum = parseFloat(lat.replace(',', '.'));
+        const lngNum = parseFloat(lng.replace(',', '.'));
+        if (isNaN(latNum) || isNaN(lngNum)) continue;
+
+        data.push({
+            nome: clean(nome),
+            reclamado: clean(reclamado),
+            endereco: clean(endereco),
+            lat: latNum,
+            lng: lngNum,
+            dataCarga: clean(dataCarga),
+            dataAudiencia: clean(dataAudiencia),
+            dataEntrega: clean(dataEntrega),
+            funciona07: clean(funciona07),
+            numCompleto: clean(numCompleto),
+            linkMaps: clean(linkMaps),
+        });
+    }
+    return data;
+}
+
+function parseCSVLine(line) {
+    if (!line || !line.trim()) return null;
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (inQuotes) {
+            if (ch === '"') {
+                if (i + 1 < line.length && line[i + 1] === '"') {
+                    current += '"';
+                    i++;
+                } else {
+                    inQuotes = false;
+                }
+            } else {
+                current += ch;
+            }
+        } else {
+            if (ch === '"') {
+                inQuotes = true;
+            } else if (ch === ',') {
+                result.push(current);
+                current = '';
+            } else {
+                current += ch;
+            }
+        }
+    }
+    result.push(current);
+    return result;
+}
+
+function clean(val) {
+    if (!val) return '';
+    return val.replace(/^["']|["']$/g, '').trim();
+}
+
+// ============================================================
+// URGENCY CLASSIFICATION
+// ============================================================
+function getUrgency(item) {
+    if (!item.dataEntrega) return URGENCY[URGENCY.length - 1]; // default green
+
+    const parts = item.dataEntrega.match(/(\d{2})\/(\d{2})\/(\d{2,4})/);
+    if (!parts) return URGENCY[URGENCY.length - 1];
+
+    let year = parseInt(parts[3]);
+    if (year < 100) year += 2000;
+    const entrega = new Date(year, parseInt(parts[2]) - 1, parseInt(parts[1]));
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const diffDays = Math.ceil((entrega - today) / (1000 * 60 * 60 * 24));
+
+    for (const u of URGENCY) {
+        if (diffDays <= u.maxDays) return u;
+    }
+    return URGENCY[URGENCY.length - 1];
+}
+
+function getDaysUntilDelivery(item) {
+    if (!item.dataEntrega) return null;
+    const parts = item.dataEntrega.match(/(\d{2})\/(\d{2})\/(\d{2,4})/);
+    if (!parts) return null;
+    let year = parseInt(parts[3]);
+    if (year < 100) year += 2000;
+    const entrega = new Date(year, parseInt(parts[2]) - 1, parseInt(parts[1]));
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return Math.ceil((entrega - today) / (1000 * 60 * 60 * 24));
+}
+
+// ============================================================
+// MARKERS
+// ============================================================
+function renderMarkers() {
+    // Clear existing
+    markers.forEach(m => m.setMap(null));
+    markers = [];
+
+    allData.forEach((item, idx) => {
+        const urgency = getUrgency(item);
+        const icon = createMarkerIcon(urgency);
+
+        const marker = new google.maps.Marker({
+            position: { lat: item.lat, lng: item.lng },
+            map: map,
+            icon: icon,
+            title: item.nome,
+            zIndex: urgency.shape === 'teardrop' ? 100 : 50, // urgent on top
+        });
+
+        marker.addListener('click', () => openInfoWindow(marker, item));
+        markers.push(marker);
+    });
+}
+
+function createMarkerIcon(urgency) {
+    const color = urgency.color;
+
+    if (urgency.shape === 'teardrop') {
+        // Teardrop/pin SVG
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="40" viewBox="0 0 28 40">
+            <path d="M14 0C6.27 0 0 6.27 0 14c0 10.5 14 26 14 26s14-15.5 14-26C28 6.27 21.73 0 14 0z" fill="${color}" stroke="#fff" stroke-width="1.5"/>
+            <circle cx="14" cy="14" r="5" fill="#fff"/>
+        </svg>`;
+        return {
+            url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+            scaledSize: new google.maps.Size(28, 40),
+            anchor: new google.maps.Point(14, 40),
+        };
+    } else {
+        // Square SVG
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+            <rect x="2" y="2" width="20" height="20" rx="3" fill="${color}" stroke="#fff" stroke-width="1.5"/>
+            <circle cx="12" cy="12" r="3.5" fill="#fff"/>
+        </svg>`;
+        return {
+            url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+            scaledSize: new google.maps.Size(24, 24),
+            anchor: new google.maps.Point(12, 12),
+        };
+    }
+}
+
+// ============================================================
+// INFO WINDOW
+// ============================================================
+function openInfoWindow(marker, item) {
+    const days = getDaysUntilDelivery(item);
+    const urgency = getUrgency(item);
+    const daysText = days !== null ? `${days} dias` : '—';
+
+    const gmapsUrl = item.linkMaps || `https://www.google.com/maps/search/?api=1&query=${item.lat},${item.lng}`;
+
+    const html = `
+        <div class="info-window">
+            <h3>${item.nome}</h3>
+            <div class="iw-reclamado">${item.reclamado || '—'}</div>
+            <table>
+                <tr><td>Endereço</td><td>${item.endereco || '—'}</td></tr>
+                <tr><td>Nº Completo</td><td style="font-size:11px">${item.numCompleto || '—'}</td></tr>
+                <tr><td>Data Carga</td><td>${item.dataCarga || '—'}</td></tr>
+                <tr><td>Audiência</td><td>${item.dataAudiencia || '—'}</td></tr>
+                <tr><td>Entrega Laudo</td><td><strong style="color:${urgency.color}">${item.dataEntrega || '—'} (${daysText})</strong></td></tr>
+                <tr><td>Funciona 07h?</td><td>${item.funciona07 || '—'}</td></tr>
+            </table>
+            <div class="iw-actions">
+                <button class="iw-btn" onclick="calcRoute(${item.lat}, ${item.lng}, '${escapeHtml(item.nome)}', '${escapeHtml(item.endereco)}')">Rota</button>
+                <a class="iw-btn secondary" href="${gmapsUrl}" target="_blank">Google Maps</a>
+            </div>
+        </div>
+    `;
+
+    infoWindow.setContent(html);
+    infoWindow.open(map, marker);
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+
+// ============================================================
+// ROUTE CALCULATION
+// ============================================================
+function calcRoute(destLat, destLng, name, addr) {
+    infoWindow.close();
+
+    if (!navigator.geolocation) {
+        showToast('Geolocalização não disponível');
+        return;
+    }
+
+    showToast('Obtendo sua localização...');
+
+    navigator.geolocation.getCurrentPosition(
+        (pos) => {
+            const origin = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            const dest = { lat: destLat, lng: destLng };
+
+            directionsService.route({
+                origin: origin,
+                destination: dest,
+                travelMode: google.maps.TravelMode.DRIVING,
+            }, (result, status) => {
+                if (status === 'OK') {
+                    directionsRenderer.setDirections(result);
+                    const leg = result.routes[0].legs[0];
+
+                    document.getElementById('routeDest').textContent = name;
+                    document.getElementById('routeAddr').textContent = addr || leg.end_address;
+                    document.getElementById('routeDistance').textContent = leg.distance.text;
+                    document.getElementById('routeDuration').textContent = leg.duration.text;
+                    document.getElementById('routeGoogleMaps').href =
+                        `https://www.google.com/maps/dir/?api=1&origin=${origin.lat},${origin.lng}&destination=${destLat},${destLng}&travelmode=driving`;
+
+                    document.getElementById('routePanel').classList.add('open');
+                } else {
+                    showToast('Erro ao calcular rota: ' + status);
+                }
+            });
+        },
+        (err) => {
+            showToast('Erro de localização: ' + err.message);
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+    );
+}
+
+function closeRoute() {
+    directionsRenderer.setDirections({ routes: [] });
+    document.getElementById('routePanel').classList.remove('open');
+}
+
+// ============================================================
+// SIDEBAR
+// ============================================================
+function renderSidebar(filter = '') {
+    const list = document.getElementById('sidebarList');
+    const filterLower = filter.toLowerCase();
+
+    const filtered = filter
+        ? allData.filter(item =>
+            (item.nome && item.nome.toLowerCase().includes(filterLower)) ||
+            (item.reclamado && item.reclamado.toLowerCase().includes(filterLower)) ||
+            (item.numCompleto && item.numCompleto.toLowerCase().includes(filterLower)) ||
+            (item.endereco && item.endereco.toLowerCase().includes(filterLower))
+        )
+        : allData;
+
+    // Sort by urgency (most urgent first)
+    const sorted = [...filtered].sort((a, b) => {
+        const dA = getDaysUntilDelivery(a) ?? 9999;
+        const dB = getDaysUntilDelivery(b) ?? 9999;
+        return dA - dB;
+    });
+
+    list.innerHTML = sorted.map((item, i) => {
+        const urgency = getUrgency(item);
+        const days = getDaysUntilDelivery(item);
+        const daysText = days !== null ? `${days}d` : '';
+        const shapeClass = urgency.shape === 'teardrop' ? '' : 'square';
+
+        return `
+            <div class="sidebar-item" onclick="focusMarker('${escapeHtml(item.nome)}')">
+                <div class="item-name">
+                    <span class="color-dot ${shapeClass}" style="background:${urgency.color}"></span>
+                    ${item.nome} <span style="color:${urgency.color};font-size:11px">${daysText}</span>
+                </div>
+                <div class="item-reclamado">${item.reclamado || '—'}</div>
+                <div class="item-dates">
+                    <span>Aud: ${item.dataAudiencia || '—'}</span>
+                    <span>Entrega: ${item.dataEntrega || '—'}</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function focusMarker(nome) {
+    const idx = allData.findIndex(d => d.nome === nome.replace(/\\'/g, "'"));
+    if (idx < 0) return;
+
+    const item = allData[idx];
+    const marker = markers[idx];
+
+    map.panTo({ lat: item.lat, lng: item.lng });
+    map.setZoom(15);
+    openInfoWindow(marker, item);
+
+    // Close sidebar on mobile
+    if (window.innerWidth <= 640) {
+        document.getElementById('sidebar').classList.remove('open');
+    }
+}
+
+// ============================================================
+// EVENT LISTENERS
+// ============================================================
+function setupEventListeners() {
+    document.getElementById('btnSidebar').addEventListener('click', () => {
+        document.getElementById('sidebar').classList.toggle('open');
+    });
+
+    document.getElementById('btnRefresh').addEventListener('click', () => {
+        showToast('Recarregando dados...');
+        loadData();
+    });
+
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+        renderSidebar(e.target.value);
+    });
+
+    document.getElementById('btnCloseRoute').addEventListener('click', closeRoute);
+
+    // Close sidebar when clicking on map
+    map.addListener('click', () => {
+        if (window.innerWidth <= 640) {
+            document.getElementById('sidebar').classList.remove('open');
+        }
+    });
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+function showToast(msg) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+function getMapStyle() {
+    return []; // default Google Maps light style
+}
+</script>
+
+<!-- Google Maps API -->
+<script async defer
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCR95whcp4vVv9kEd7DXbMBm7MzsCVOK10&callback=initMap&libraries=places">
+</script>
+
+</body>
+</html>
