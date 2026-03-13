@@ -446,6 +446,137 @@
             opacity: 1;
             transform: translateX(-50%) translateY(0);
         }
+
+        /* === MODAL === */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 200;
+            background: rgba(0,0,0,0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s;
+        }
+
+        .modal-overlay.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal {
+            background: var(--surface);
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 480px;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 24px;
+        }
+
+        .modal h2 {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: var(--text);
+        }
+
+        .modal .form-group {
+            margin-bottom: 12px;
+        }
+
+        .modal label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .modal input, .modal select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 14px;
+            color: var(--text);
+            background: var(--bg);
+            outline: none;
+        }
+
+        .modal input:focus, .modal select:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.15);
+        }
+
+        .modal .form-row {
+            display: flex;
+            gap: 12px;
+        }
+
+        .modal .form-row .form-group {
+            flex: 1;
+        }
+
+        .modal .form-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 20px;
+        }
+
+        .modal .form-actions button {
+            flex: 1;
+            padding: 12px;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+        }
+
+        .modal .geocode-row {
+            display: flex;
+            gap: 8px;
+            align-items: flex-end;
+        }
+
+        .modal .geocode-row .form-group { flex: 1; }
+
+        .modal .geocode-btn {
+            padding: 10px 14px;
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            height: 42px;
+        }
+
+        .modal .geocode-btn:hover { opacity: 0.9; }
+
+        .modal .coords-display {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 4px;
+            min-height: 16px;
+        }
+
+        .modal .coords-display.found {
+            color: var(--verde);
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
@@ -464,6 +595,7 @@
     <button class="btn-icon" id="btnSidebar" title="Lista de perícias">☰</button>
     <h1>Mapa Perícias</h1>
     <span class="stats" id="stats"></span>
+    <button class="btn-icon" id="btnAdd" title="Adicionar perícia" style="background:var(--accent);color:#fff;font-size:22px;font-weight:700">+</button>
     <button class="btn-icon" id="btnRefresh" title="Recarregar dados">↻</button>
 </div>
 
@@ -503,6 +635,66 @@
     </div>
 </div>
 
+<!-- Modal: Adicionar Perícia -->
+<div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+        <h2>Adicionar Perícia</h2>
+
+        <div class="form-group">
+            <label>Nome (ex: Vara 81 91/26)</label>
+            <input type="text" id="fNome" placeholder="Vara XX NNNN/AA">
+        </div>
+
+        <div class="form-group">
+            <label>Reclamado</label>
+            <input type="text" id="fReclamado" placeholder="Nome do reclamado">
+        </div>
+
+        <div class="form-group">
+            <div class="geocode-row">
+                <div class="form-group" style="margin-bottom:0">
+                    <label>Endereço</label>
+                    <input type="text" id="fEndereco" placeholder="Av Paulista 1000, São Paulo">
+                </div>
+                <button class="geocode-btn" onclick="geocodeAddress()">Buscar</button>
+            </div>
+            <div class="coords-display" id="coordsDisplay"></div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Data Carga (DD/MM/AA)</label>
+                <input type="text" id="fDataCarga" placeholder="13/03/26">
+            </div>
+            <div class="form-group">
+                <label>Data Audiência</label>
+                <input type="text" id="fDataAudiencia" placeholder="14/05/26">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Data Entrega Laudo</label>
+                <input type="text" id="fDataEntrega" placeholder="20/04/26">
+            </div>
+            <div class="form-group">
+                <label>Funciona às 07:00?</label>
+                <input type="text" id="fFunciona07" placeholder="">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Número Completo</label>
+            <input type="text" id="fNumCompleto" placeholder="1000091-37.2026.5.02.0081">
+        </div>
+
+        <div class="form-actions">
+            <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+            <button class="btn-primary" onclick="submitPoint()">Adicionar ao Mapa</button>
+        </div>
+    </div>
+</div>
+
 <!-- Map -->
 <div id="map"></div>
 
@@ -514,6 +706,7 @@ const CONFIG = {
     API_KEY: 'AIzaSyCR95whcp4vVv9kEd7DXbMBm7MzsCVOK10',
     SPREADSHEET_ID: '168zDX31UFti0KnYlOhtAnCoU8DiRFp_jqiE32EJxWNo',
     SHEET_NAME: 'Sheet1',
+    APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbxgoTAF7-Y0cCLt8tVhTuCQ0eS5llH2VLEvhBytCuQerK0KOWvN9E3978BSfxSx5ZSj/exec',
     DEFAULT_CENTER: { lat: -23.55, lng: -46.63 }, // São Paulo
     DEFAULT_ZOOM: 11,
 };
@@ -532,6 +725,8 @@ const URGENCY = [
 // ============================================================
 let map, markers = [], allData = [], infoWindow;
 let directionsService, directionsRenderer;
+let geocoder;
+let pendingLat = null, pendingLng = null, pendingLinkMaps = '';
 
 // ============================================================
 // INIT
@@ -550,6 +745,7 @@ function initMap() {
     });
 
     infoWindow = new google.maps.InfoWindow();
+    geocoder = new google.maps.Geocoder();
     directionsService = new google.maps.DirectionsService();
     directionsRenderer = new google.maps.DirectionsRenderer({
         map: map,
@@ -915,11 +1111,23 @@ function setupEventListeners() {
         loadData();
     });
 
+    document.getElementById('btnAdd').addEventListener('click', openModal);
+
     document.getElementById('searchInput').addEventListener('input', (e) => {
         renderSidebar(e.target.value);
     });
 
     document.getElementById('btnCloseRoute').addEventListener('click', closeRoute);
+
+    // Close modal on overlay click
+    document.getElementById('modalOverlay').addEventListener('click', (e) => {
+        if (e.target === document.getElementById('modalOverlay')) closeModal();
+    });
+
+    // Enter key on address field triggers geocode
+    document.getElementById('fEndereco').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); geocodeAddress(); }
+    });
 
     // Close sidebar when clicking on map
     map.addListener('click', () => {
@@ -941,6 +1149,119 @@ function showToast(msg) {
 
 function getMapStyle() {
     return []; // default Google Maps light style
+}
+
+// ============================================================
+// MODAL: ADD POINT
+// ============================================================
+function openModal() {
+    pendingLat = null;
+    pendingLng = null;
+    pendingLinkMaps = '';
+    document.getElementById('coordsDisplay').textContent = '';
+    document.getElementById('coordsDisplay').className = 'coords-display';
+
+    // Auto-fill data carga with today
+    const today = new Date();
+    const dd = String(today.getDate()).padStart(2, '0');
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const yy = String(today.getFullYear()).slice(-2);
+    document.getElementById('fDataCarga').value = `${dd}/${mm}/${yy}`;
+
+    // Clear other fields
+    document.getElementById('fNome').value = '';
+    document.getElementById('fReclamado').value = '';
+    document.getElementById('fEndereco').value = '';
+    document.getElementById('fDataAudiencia').value = '';
+    document.getElementById('fDataEntrega').value = '';
+    document.getElementById('fFunciona07').value = '';
+    document.getElementById('fNumCompleto').value = '';
+
+    document.getElementById('modalOverlay').classList.add('open');
+    document.getElementById('fNome').focus();
+}
+
+function closeModal() {
+    document.getElementById('modalOverlay').classList.remove('open');
+}
+
+function geocodeAddress() {
+    const address = document.getElementById('fEndereco').value.trim();
+    if (!address) {
+        showToast('Digite um endereço');
+        return;
+    }
+
+    const display = document.getElementById('coordsDisplay');
+    display.textContent = 'Buscando...';
+    display.className = 'coords-display';
+
+    geocoder.geocode({ address: address }, (results, status) => {
+        if (status === 'OK' && results[0]) {
+            const loc = results[0].geometry.location;
+            pendingLat = loc.lat();
+            pendingLng = loc.lng();
+            pendingLinkMaps = `https://www.google.com/maps/search/?api=1&query=${pendingLat},${pendingLng}`;
+
+            display.textContent = `✓ ${results[0].formatted_address} (${pendingLat.toFixed(6)}, ${pendingLng.toFixed(6)})`;
+            display.className = 'coords-display found';
+
+            // Show on map
+            map.panTo({ lat: pendingLat, lng: pendingLng });
+            map.setZoom(15);
+        } else {
+            display.textContent = '✗ Endereço não encontrado. Tente ser mais específico.';
+            display.className = 'coords-display';
+            pendingLat = null;
+            pendingLng = null;
+        }
+    });
+}
+
+async function submitPoint() {
+    const nome = document.getElementById('fNome').value.trim();
+    const endereco = document.getElementById('fEndereco').value.trim();
+
+    if (!nome) { showToast('Preencha o nome (ex: Vara 81 91/26)'); return; }
+    if (!endereco) { showToast('Preencha o endereço'); return; }
+    if (pendingLat === null || pendingLng === null) {
+        showToast('Clique em "Buscar" para geocodificar o endereço');
+        return;
+    }
+
+    const payload = {
+        nome: nome,
+        reclamado: document.getElementById('fReclamado').value.trim(),
+        endereco: endereco,
+        latitude: pendingLat,
+        longitude: pendingLng,
+        dataCarga: document.getElementById('fDataCarga').value.trim(),
+        dataAudiencia: document.getElementById('fDataAudiencia').value.trim(),
+        dataEntrega: document.getElementById('fDataEntrega').value.trim(),
+        funciona07: document.getElementById('fFunciona07').value.trim(),
+        numCompleto: document.getElementById('fNumCompleto').value.trim(),
+        linkMaps: pendingLinkMaps,
+    };
+
+    showToast('Salvando...');
+
+    try {
+        await fetch(CONFIG.APPS_SCRIPT_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+
+        showToast('Perícia adicionada com sucesso!');
+        closeModal();
+
+        // Reload data after short delay (give Sheets time to update)
+        setTimeout(() => loadData(), 2000);
+    } catch (err) {
+        console.error('Erro ao salvar:', err);
+        showToast('Erro ao salvar: ' + err.message);
+    }
 }
 </script>
 
